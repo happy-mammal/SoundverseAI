@@ -41,6 +41,8 @@ struct HomeScreen: View {
 
     @State private var chatInput:String = ""
     
+    @FocusState private var isChatInputFocused: Bool
+    
     @State private var showNotificationsScreen: Bool = false
     
     @State private var thinking: Bool = true
@@ -122,6 +124,7 @@ extension HomeScreen{
         if(!chatInput.isEmpty) {
             chats.append(chatInput)
             chatInput = ""
+            isChatInputFocused = false
             DispatchQueue.main.asyncAfter(deadline: .now()+1){
                 chats.append("This is dummy replay man set from a person completing soundverse internship assignment.")
             }
@@ -197,6 +200,7 @@ extension HomeScreen {
         VStack {
             TextField("Ask anything", text: $chatInput, axis: .vertical)
                 .lineLimit(4)
+                .focused($isChatInputFocused)
                    
             HStack {
                 

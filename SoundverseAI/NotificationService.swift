@@ -34,13 +34,14 @@ class NotificationService: NSObject, ObservableObject {
     private var authorizationStatus:(isSuccess:Bool, error: Error?) = (false,nil)
     
     //Instance of notification for current app
-    private let notificationCenter = UNUserNotificationCenter.current()
+    private let notificationCenter: UNUserNotificationCenter
     
     //MARK: Singleton for notification service
     static let shared = NotificationService()
     
     //Private internal init so no one can use init of this class outside
     override private init() {
+        self.notificationCenter = UNUserNotificationCenter.current()
         super.init()
         notificationCenter.delegate = self
     }
@@ -118,7 +119,7 @@ extension NotificationService: UNUserNotificationCenterDelegate {
     func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse, withCompletionHandler completionHandler: @escaping () -> Void) {
        
 
-        addNotifications(response.notification)
+        addNotifications(response.notification,isBackground: true)
         
         openWebpage(response.notification)
         
@@ -127,7 +128,7 @@ extension NotificationService: UNUserNotificationCenterDelegate {
     //MARK: Used to handle foreground activity when notification is received
     func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification, withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
        
-        addNotifications(notification)
+        addNotifications(notification,isBackground: false)
         
     }
     
@@ -145,20 +146,24 @@ extension NotificationService: UNUserNotificationCenterDelegate {
     }
     
     //MARK: Function to add notification to notifications list & marking unread flag
-    private func addNotifications(_ notification: UNNotification) {
+    private func addNotifications(_ notification: UNNotification, isBackground:Bool) {
         let userInfo = notification.request.content.userInfo
        
         if let icon = userInfo[AnyHashable("icon")] as? String,
            let text = userInfo[AnyHashable("text")] as? String{
             
-                
-            let notificationItem = NotificationItem(icon: icon, text: text)
+            debugPrint(notification.request.identifier)
+            let notificationItem = NotificationItem(id: notification.request.identifier, icon: icon, text: text)
            
-            notifications.append(notificationItem)
+            if !notifications.contains(where: { $0.id == notificationItem.id }) {
+                notifications.append(notificationItem)
+            }
             
             unReaded = true
             
-            showNotificationAlert = true
+            if !isBackground {
+                showNotificationAlert = true
+            }
             
         }
     }
