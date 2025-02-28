@@ -9,9 +9,16 @@ import SwiftUI
 
 @main
 struct SoundverseAIApp: App {
+    
+    //Intializing notification service with single instance
+    @StateObject private var notificationService = NotificationService.shared
+    
     var body: some Scene {
         WindowGroup {
-            Test()
+           
+             HomeScreen()
+            .environmentObject(notificationService)
+            
         }
     }
 }

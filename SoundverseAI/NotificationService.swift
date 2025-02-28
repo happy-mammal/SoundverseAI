@@ -10,12 +10,9 @@ import UserNotifications
 import UIKit
 
 
-enum NotificationServiceError: Error {
-    case notAuthorized, unknown(String)
-}
-
 class NotificationService: NSObject, ObservableObject {
     
+    //These are dummy notificationed pre loaded
     let dummyNotifications = [
        NotificationItem(icon: "waveform.path", text: "🔊 Soundwave analysis complete—try now!"),
        NotificationItem(icon: "music.mic", text: "🎤 Your favorite artist released a new song!"),
@@ -23,24 +20,32 @@ class NotificationService: NSObject, ObservableObject {
        NotificationItem(icon: "person.2.fill", text: "Your friend joined Soundverse AI! 👥"),
        NotificationItem(icon: "star.fill", text: "Exclusive playlist curated for you! 🌟"),
     ]
- 
+    
+    //A flag to indicate new notifications are there and are unreaded
     @Published var unReaded:Bool = false
     
+    //
     @Published var showNotificationAlert:Bool = false
     
+    //New notifications are stored here
     @Published var notifications:[NotificationItem] = []
     
+    //A status of notification permission check/request
     private var authorizationStatus:(isSuccess:Bool, error: Error?) = (false,nil)
     
+    //Instance of notification for current app
     private let notificationCenter = UNUserNotificationCenter.current()
     
+    //MARK: Singleton for notification service
     static let shared = NotificationService()
     
+    //Private internal init so no one can use init of this class outside
     override private init() {
         super.init()
         notificationCenter.delegate = self
     }
     
+    //MARK: Function to request authorization of notifications
     func requestPermission() {
         notificationCenter.requestAuthorization(options: [.alert,.sound]) { isSuccess, error in
             
@@ -53,8 +58,10 @@ class NotificationService: NSObject, ObservableObject {
         }
     }
     
-    func sendNotification() throws {
+    //MARK: Funtion to send notification
+    func sendNotification() -> Bool? {
         
+        //Setting up the content for notification
         let content = UNMutableNotificationContent()
        
         content.title = "🎧 Soundverse AI"
@@ -63,43 +70,51 @@ class NotificationService: NSObject, ObservableObject {
         content.userInfo = [
             "icon":"sparkles",
             "text":"Your Personalized AI Playlist is Ready!",
-            "url":"https://www.loudly.com/music/ai-music-generator"
+            "url":"https://suno.com/home"
         ]
         content.sound = .default
         
+        //Setting up the trigger i.e to send notification after 5 seconds
         let trigger = UNTimeIntervalNotificationTrigger(timeInterval: 5, repeats: false)
         
+        //Setting up the request for the notification
         let request = UNNotificationRequest(
             identifier: UUID().uuidString,
             content: content,
             trigger: trigger
         )
         
-        guard authorizationStatus.isSuccess else {
-            if let error =  authorizationStatus.error {
-                throw NotificationServiceError.unknown(error.localizedDescription)
-            }else {
-                throw NotificationServiceError.notAuthorized
-            }
-        }
-        
+        //Making sure before request is sent authorization is provided
         requestPermission()
-        
-        notificationCenter.add(request) { error in
-            if let error {
+       
+        //Check for authorization status
+        guard authorizationStatus.isSuccess else {
+            //If authorization status is not sucess then check if any error occured
+            if let error =  authorizationStatus.error {
+                //If error send false and abort
                 debugPrint(error)
-                return
+                return false
             }
+            
+            //If no error means authorization is not granted and abort
+            return nil
         }
         
-        print("SUCCESS")
+        //If all well then create notification request
+        notificationCenter.add(request)
+        
+        //All well send back as true
+        return true
         
     }
 }
 
+//A delegate used to listen for incoming notification when in foreground and perform action on tap of notification
 extension NotificationService: UNUserNotificationCenterDelegate {
     
     
+    
+    //MARK: Used to handle when a notification is tapped reqirect the app to open a webpage similar to Soundverse AI
     func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse, withCompletionHandler completionHandler: @escaping () -> Void) {
        
 
@@ -109,20 +124,19 @@ extension NotificationService: UNUserNotificationCenterDelegate {
         
     }
     
+    //MARK: Used to handle foreground activity when notification is received
     func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification, withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
-        
-        completionHandler([.banner,.sound])
+       
         addNotifications(notification)
         
     }
     
     
-    
+    //MARK: Function to open webpage
     private func openWebpage(_ notification: UNNotification){
         let userInfo = notification.request.content.userInfo
         if let urlString = userInfo["url"] as? String,
            let url = URL(string: urlString) {
-            print("🔗 Opening website: \(urlString)")
             
             DispatchQueue.main.async {
                 UIApplication.shared.open(url)
@@ -130,6 +144,7 @@ extension NotificationService: UNUserNotificationCenterDelegate {
         }
     }
     
+    //MARK: Function to add notification to notifications list & marking unread flag
     private func addNotifications(_ notification: UNNotification) {
         let userInfo = notification.request.content.userInfo
        
@@ -142,6 +157,7 @@ extension NotificationService: UNUserNotificationCenterDelegate {
             notifications.append(notificationItem)
             
             unReaded = true
+            
             showNotificationAlert = true
             
         }

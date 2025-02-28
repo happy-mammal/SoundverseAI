@@ -7,16 +7,17 @@
 
 import SwiftUI
 
+//A struct to store some info about chip item
 struct ChipInfo: Identifiable{
     var id:String = UUID().uuidString
     let systemImage: String?
     let title: String
 }
 
-struct Test: View {
+struct HomeScreen: View {
     
-    @StateObject private var notificationService = NotificationService.shared
-    let chipData = [
+    //These are dummy chip data pre loaded
+    private let chipData = [
         ChipInfo(systemImage: "sparkles", title: "SAAR-Voice"),
         ChipInfo(systemImage: nil, title: "Seperate Stems"),
         ChipInfo(systemImage: nil, title: "SAAR-Chat"),
@@ -26,28 +27,41 @@ struct Test: View {
         
     ]
     
-    @State var showMenu:Bool = false
-    
-    let suggestions = [
+    //These are dummy suggesttions pre loaded
+    private let suggestions = [
         "Create an energetic pop song with catchy hooks and vibrant blend of guitars",
         "Compose a futuristic electronic track with cutting-edge synth sound and pulsing"
     ]
     
-    @State private var textField:String = ""
+    //Notification Service
+    @EnvironmentObject private var notificationService:NotificationService
+    
+    //Flag to show/hide side menu
+    @State var showMenu:Bool = false
+
+    @State private var chatInput:String = ""
     
     @State private var showNotificationsScreen: Bool = false
+    
+    @State private var thinking: Bool = true
+    
+    @State private var chats: [String] = []
     
     var body: some View {
         
         ZStack{
-            NavigationStack {
+            NavigationStack{
                 VStack {
                     
                     Spacer()
                     
-                    header
-                    
-                    suggestionList
+                    if chats.isEmpty {
+                        header
+                        
+                        suggestionList
+                    }else {
+                        chatList
+                    }
                     
                     Spacer()
                     
@@ -56,7 +70,6 @@ struct Test: View {
                     inputPanel
                     
                 }
-                
                 .alert("New notification", isPresented: $notificationService.showNotificationAlert, actions: {
                     
                 }, message: {Text(notificationService.notifications.last?.text ?? "")})
@@ -66,7 +79,6 @@ struct Test: View {
                 .toolbar {
                     toolbarLeadingItems
                     
-                    
                     ToolbarItem(placement: .principal) {
                         Text("Soundverse AI")
                             .font(.headline)
@@ -75,27 +87,21 @@ struct Test: View {
                     toolbarTrailingItems
                     
                 }
-                
-                
-                
             }
             
+            //MARK: Side menu
             SideMenu()
                 .offset(x: showMenu ? 0 : -270)
-                .transition(.move(edge: .leading))
                 .animation(.spring, value: showMenu)
+                
                 
         }
         .gesture(DragGesture().onEnded({ value in
+            //Drag gesture used to detect left & right swipe to show/hide side menu
             if value.translation.width < -50 {
-//                withAnimation(.easeIn) {
-//                    
-//                }
+
                 showMenu = false
             }else if value.translation.width > 50 {
-//                withAnimation(.easeIn) {
-//                    
-//                }
                 showMenu = true
             }
         }))
@@ -105,9 +111,28 @@ struct Test: View {
         
 }
 
+//Functions
+extension HomeScreen{
+    //MARK: Function for dummy random prompt
+    func onDiceButtonClicked(){
+        chatInput = "This is a dummy random input chat prompt wanna try!"
+    }
+    //MARK: Function to send chat
+    func onSendChatButtonClicked(){
+        if(!chatInput.isEmpty) {
+            chats.append(chatInput)
+            chatInput = ""
+            DispatchQueue.main.asyncAfter(deadline: .now()+1){
+                chats.append("This is dummy replay man set from a person completing soundverse internship assignment.")
+            }
+        }
+    }
+}
 
-extension Test {
+//Components
+extension HomeScreen {
     
+    //MARK: Header
     var header: some View {
         Text("Generate AI Music with the ultimate music assistant")
             .font(.title)
@@ -116,6 +141,7 @@ extension Test {
             .padding()
     }
     
+    //MARK: Promt suggestions list
     var suggestionList: some View {
         
         ForEach(suggestions, id: \.self) { value in
@@ -134,6 +160,7 @@ extension Test {
         
     }
     
+    //MARK: App features list
     var featureList: some View {
         
         ScrollView(.horizontal) {
@@ -165,15 +192,16 @@ extension Test {
         .scrollIndicators(.hidden)
     }
     
+    //MARK: Chat input panel with text field, random prompt, send button
     var inputPanel: some View {
         VStack {
-            TextField("Ask anything", text: $textField,axis: .vertical)
+            TextField("Ask anything", text: $chatInput, axis: .vertical)
                 .lineLimit(4)
-            
+                   
             HStack {
                 
                 Button {
-                    
+                    onDiceButtonClicked()
                 } label: {
                     Image(systemName: "dice.fill")
                         .font(.title3)
@@ -193,7 +221,7 @@ extension Test {
                 Spacer()
                 
                 Button {
-                    
+                    onSendChatButtonClicked()
                 } label: {
                     Image(systemName: "arrow.up")
                         .font(.title3)
@@ -221,6 +249,7 @@ extension Test {
         .padding()
     }
     
+    //MARK: Toolbar leading items
     var toolbarLeadingItems: some ToolbarContent {
         ToolbarItem(placement: .topBarLeading) {
             Button {
@@ -243,6 +272,7 @@ extension Test {
         }
     }
     
+    //MARK: Toolbar trailing items
     var toolbarTrailingItems: some ToolbarContent {
         ToolbarItem(placement: .topBarTrailing) {
             HStack(spacing: 10) {
@@ -255,8 +285,8 @@ extension Test {
                         .fontWeight(.semibold)
                         .frame(width: 40, height: 40)
                         .foregroundStyle(Color.purple)
-                        
-                       
+                    
+                    
                 }
                 
                 Image("ProfileImage")
@@ -268,8 +298,34 @@ extension Test {
         }
     }
     
+    //MARK: Chat tile
+    func chatTile(_ chat: String) -> some View {
+        Text(chat)
+            .font(.headline)
+            .padding()
+            .background(RoundedRectangle(cornerRadius: 15)
+                .fill(Color.purple.opacity(0.3)))
+        
+            .listRowBackground(
+                Color.clear
+            )
+            .listRowSeparator(.hidden)
+    }
+    
+    //MARK: Chat list
+    var chatList: some View {
+        List(chats, id: \.self) { chat in
+            
+            chatTile(chat)
+        }
+        .animation(.spring, value: chats)
+        .scrollContentBackground(.hidden)
+        .scrollIndicators(.hidden)
+    }
+    
 }
 
 #Preview {
-    Test()
+    HomeScreen()
+    .environmentObject(NotificationService.shared)
 }
